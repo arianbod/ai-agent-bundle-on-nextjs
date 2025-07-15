@@ -51,7 +51,7 @@ export default function RootLayout({
             display: flex;
             align-items: center;
             gap: 8px;
-            min-height: 44px; /* iOS recommended touch target */
+            min-height: 44px;
             white-space: nowrap;
           }
 
@@ -73,23 +73,13 @@ export default function RootLayout({
             box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
           }
 
-          .voice-assistant-global-button.connected {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-          }
-
-          .voice-assistant-global-button.connected:hover {
-            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-          }
-
-          /* Mobile-first responsive design */
           @media (max-width: 768px) {
             .voice-assistant-global-button {
               top: 15px;
               right: 15px;
               padding: 14px 18px;
               font-size: 14px;
-              min-height: 48px; /* Larger touch target for mobile */
+              min-height: 48px;
               min-width: 48px;
               border-radius: 16px;
               box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
@@ -99,13 +89,8 @@ export default function RootLayout({
             .voice-assistant-global-button.stop {
               box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
             }
-            
-            .voice-assistant-global-button.connected {
-              box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-            }
           }
 
-          /* Extra small screens */
           @media (max-width: 480px) {
             .voice-assistant-global-button {
               top: 10px;
@@ -114,33 +99,11 @@ export default function RootLayout({
               font-size: 13px;
               min-height: 44px;
               border-radius: 14px;
-              /* Make it more prominent on very small screens */
               box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
             }
             
             .voice-assistant-global-button.stop {
               box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
-            }
-            
-            .voice-assistant-global-button.connected {
-              box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
-            }
-          }
-
-          /* Ensure visibility on very small or narrow screens */
-          @media (max-width: 360px) {
-            .voice-assistant-global-button {
-              right: 8px;
-              top: 8px;
-              font-size: 12px;
-              padding: 10px 14px;
-            }
-          }
-
-          /* High DPI displays (retina) */
-          @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-            .voice-assistant-global-button {
-              border: 1px solid rgba(255, 255, 255, 0.1);
             }
           }
         `}</style>
@@ -158,58 +121,53 @@ export default function RootLayout({
 
         {children}
 
-        {/* Load Voice Assistant Bundle */}
-        <Script src='/voice-assistant-bundle.js' strategy='afterInteractive' />
+        {/* Load Voice Assistant Bundle - EXACTLY like HTML demo */}
+        <Script src='/voice-assistant-bundle.js' strategy='beforeInteractive' />
 
-        {/* iOS Safari Fix + Voice Assistant Setup */}
-        <Script id='voice-assistant-setup' strategy='afterInteractive'>
+        {/* iOS Safari Fix + Setup - EXACTLY like HTML demo */}
+        <Script id='voice-assistant-setup' strategy='beforeInteractive'>
           {`
-            // iOS Safari AudioContext Fix
+            // EXACT COPY from your working HTML demo
             const PLATFORM = {
               isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream,
               isSafari: /^((?!chrome|android).)*safari/i.test(navigator.userAgent),
             };
             PLATFORM.isIOSSafari = PLATFORM.isIOS && PLATFORM.isSafari;
 
-            if (PLATFORM.isIOSSafari) {
-              console.log('🍎 iOS Safari: Setting up AudioContext patch');
-              
-              function patchUtilsForIOS() {
-                if (typeof Utils !== 'undefined') {
-                  console.log('🍎 iOS Safari: Patching Utils.audioContext for immediate creation');
+            // iOS Safari AudioContext Fix - EXACT COPY from HTML
+            if (PLATFORM.isIOSSafari && typeof Utils !== 'undefined') {
+              console.log('🍎 iOS Safari: Patching Utils.audioContext for immediate creation');
 
-                  const originalAudioContext = Utils.audioContext;
-                  Utils.audioContext = async function (options = {}) {
-                    console.log('🍎 iOS Safari: Utils.audioContext called - creating immediately');
+              const originalAudioContext = Utils.audioContext;
+              Utils.audioContext = async function (options = {}) {
+                console.log('🍎 iOS Safari: Utils.audioContext called - creating immediately');
 
-                    try {
-                      const context = new (window.AudioContext || window.webkitAudioContext)(options);
-                      if (context.state === 'suspended') {
-                        await context.resume();
-                      }
-                      console.log('✅ iOS Safari: AudioContext created successfully via Utils override');
-                      return context;
-                    } catch (error) {
-                      console.error('❌ iOS Safari: Utils.audioContext failed:', error);
-                      return originalAudioContext(options);
-                    }
-                  };
-
-                  console.log('✅ iOS Safari: Utils.audioContext patched');
-                } else {
-                  setTimeout(patchUtilsForIOS, 50);
+                try {
+                  const context = new (window.AudioContext || window.webkitAudioContext)(options);
+                  if (context.state === 'suspended') {
+                    await context.resume();
+                  }
+                  console.log('✅ iOS Safari: AudioContext created successfully via Utils override');
+                  return context;
+                } catch (error) {
+                  console.error('❌ iOS Safari: Utils.audioContext failed:', error);
+                  return originalAudioContext(options);
                 }
-              }
-              
-              patchUtilsForIOS();
+              };
+
+              console.log('✅ iOS Safari: Utils.audioContext patched');
             }
+          `}
+        </Script>
 
-            // Global Voice Assistant State
+        {/* Setup button after everything loads */}
+        <Script id='voice-assistant-button-setup' strategy='afterInteractive'>
+          {`
+            // Voice Assistant State
             let isVoiceAssistantActive = false;
-            let voiceAssistantStatus = 'ready'; // ready, starting, active, stopping
 
-            // Get configuration
-            function getVoiceConfig() {
+            // Get configuration - EXACT like HTML demo
+            function getConfig() {
               return {
                 backendUrl: '${
                   process.env.NEXT_PUBLIC_VOICE_BACKEND_URL || 'wss://aiagent.babaai.live'
@@ -231,168 +189,81 @@ export default function RootLayout({
               };
             }
 
-            // Start Voice Assistant
-            function startVoiceAssistant() {
-              if (typeof window === 'undefined' || !window.VoiceAssistant || voiceAssistantStatus !== 'ready') {
-                return;
-              }
+            // Start Assistant - EXACT like HTML demo
+            function startFullDemo() {
+              console.log('🚀 Starting Full Demo...');
+              stopAssistant();
 
-              console.log('🚀 Starting Voice Assistant...');
-              voiceAssistantStatus = 'starting';
-              updateGlobalButton();
-
-              try {
-                // Stop any existing instance first
-                window.VoiceAssistant.destroy();
-
-                // Start new instance
-                window.VoiceAssistant.init(getVoiceConfig());
-                
+              if (typeof window !== 'undefined' && window.VoiceAssistant) {
+                window.VoiceAssistant.init({
+                  ...getConfig()
+                });
                 isVoiceAssistantActive = true;
-                voiceAssistantStatus = 'active';
-                updateGlobalButton();
-                
-                console.log('✅ Voice Assistant started successfully');
-              } catch (error) {
-                console.error('❌ Failed to start Voice Assistant:', error);
-                voiceAssistantStatus = 'ready';
-                isVoiceAssistantActive = false;
-                updateGlobalButton();
+                updateButton();
               }
             }
 
-            // Stop Voice Assistant
-            function stopVoiceAssistant() {
-              if (typeof window === 'undefined' || !window.VoiceAssistant || voiceAssistantStatus !== 'active') {
-                return;
-              }
-
-              console.log('⏹️ Stopping Voice Assistant...');
-              voiceAssistantStatus = 'stopping';
-              updateGlobalButton();
-
-              try {
+            // Stop Assistant - EXACT like HTML demo  
+            function stopAssistant() {
+              console.log('⏹️ Stopping Assistant...');
+              if (typeof window !== 'undefined' && window.VoiceAssistant) {
                 window.VoiceAssistant.destroy();
-                isVoiceAssistantActive = false;
-                voiceAssistantStatus = 'ready';
-                updateGlobalButton();
-                
-                console.log('✅ Voice Assistant stopped successfully');
-              } catch (error) {
-                console.error('❌ Failed to stop Voice Assistant:', error);
-                voiceAssistantStatus = 'ready';
-                updateGlobalButton();
               }
+              isVoiceAssistantActive = false;
+              updateButton();
             }
 
-            // Update Global Button
-            function updateGlobalButton() {
+            // Update button UI
+            function updateButton() {
               const btn = document.getElementById('voice-assistant-global-btn');
               const icon = document.getElementById('voice-btn-icon');
               const text = document.getElementById('voice-btn-text');
               
               if (!btn || !icon || !text) return;
 
-              // Remove all status classes
-              btn.classList.remove('stop', 'connected');
-              
-              switch (voiceAssistantStatus) {
-                case 'ready':
-                  icon.textContent = '🎤';
-                  text.textContent = 'Start Assistant';
-                  btn.disabled = false;
-                  break;
-                  
-                case 'starting':
-                  icon.textContent = '⏳';
-                  text.textContent = 'Starting...';
-                  btn.disabled = true;
-                  break;
-                  
-                case 'active':
-                  icon.textContent = '🔴';
-                  text.textContent = 'Stop Assistant';
-                  btn.classList.add('stop');
-                  btn.disabled = false;
-                  break;
-                  
-                case 'stopping':
-                  icon.textContent = '⏳';
-                  text.textContent = 'Stopping...';
-                  btn.disabled = true;
-                  break;
+              if (isVoiceAssistantActive) {
+                btn.classList.add('stop');
+                icon.textContent = '🔴';
+                text.textContent = 'Stop Assistant';
+              } else {
+                btn.classList.remove('stop');
+                icon.textContent = '🎤';
+                text.textContent = 'Start Assistant';
               }
             }
 
-            // Setup Global Button
-            function setupGlobalButton() {
+            // Setup button when ready
+            function setupButton() {
               const btn = document.getElementById('voice-assistant-global-btn');
               
-              if (btn) {
-                // Force visibility and positioning
+              if (btn && typeof window !== 'undefined' && window.VoiceAssistant) {
                 btn.style.display = 'flex';
-                btn.style.position = 'fixed';
-                btn.style.zIndex = '999998';
-                btn.style.visibility = 'visible';
-                btn.style.opacity = '1';
                 
-                // Ensure button is always on top
-                btn.style.top = window.innerWidth <= 480 ? '10px' : '20px';
-                btn.style.right = window.innerWidth <= 480 ? '10px' : '20px';
-                
-                btn.addEventListener('click', function(e) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  
-                  console.log('🎤 Global button clicked, current state:', voiceAssistantStatus);
-                  
+                // DIRECT click handler - no delays, no async
+                btn.onclick = function() {
                   if (isVoiceAssistantActive) {
-                    stopVoiceAssistant();
+                    stopAssistant();
                   } else {
-                    startVoiceAssistant();
+                    startFullDemo(); // Direct call like HTML demo
                   }
-                });
+                };
 
-                // Add touch events for better mobile interaction
-                btn.addEventListener('touchstart', function(e) {
-                  btn.style.transform = 'scale(0.95)';
-                }, { passive: true });
-                
-                btn.addEventListener('touchend', function(e) {
-                  btn.style.transform = 'scale(1)';
-                }, { passive: true });
-
-                updateGlobalButton();
-                
-                console.log('✅ Global voice assistant button ready');
-                console.log('📱 Button position:', btn.getBoundingClientRect());
-                console.log('📱 Screen size:', window.innerWidth + 'x' + window.innerHeight);
+                updateButton();
+                console.log('✅ Voice Assistant button ready');
               } else {
-                console.error('❌ Could not find voice assistant button element');
+                // Retry until both button and VoiceAssistant are ready
+                setTimeout(setupButton, 50);
               }
             }
 
-            // Initialize when everything is ready
-            function initialize() {
-              if (typeof window !== 'undefined' && window.VoiceAssistant) {
-                setupGlobalButton();
-              } else {
-                setTimeout(initialize, 100);
-              }
-            }
-            
-            // Start initialization
+            // Start setup
             if (document.readyState === 'loading') {
-              document.addEventListener('DOMContentLoaded', initialize);
+              document.addEventListener('DOMContentLoaded', setupButton);
             } else {
-              initialize();
+              setupButton();
             }
-            
-            // Expose functions globally for console access
-            window.startVoiceAssistant = startVoiceAssistant;
-            window.stopVoiceAssistant = stopVoiceAssistant;
-            
-            console.log('🎤 Voice Assistant setup complete - use global button to control');
+
+            console.log('🎤 Voice Assistant Demo Ready!');
           `}
         </Script>
       </body>
