@@ -1356,7 +1356,7 @@
             this.isSilent = false;
         }
 
-        async start() {
+        async start(externalContext) {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 throw new Error("Could not request user media");
             }
@@ -1364,7 +1364,18 @@
             this.starting = new Promise(async (resolve, reject) => {
                 try {
                     this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    this.audioContext = await Utils.audioContext({ sampleRate: this.sampleRate });
+                    if (externalContext) {
+                        this.audioContext = externalContext;
+                        if (this.audioContext.state === 'suspended') {
+                            try {
+                                this.audioContext.resume();
+                            } catch (err) {
+                                console.error('Failed to resume provided AudioContext:', err);
+                            }
+                        }
+                    } else {
+                        this.audioContext = await Utils.audioContext({ sampleRate: this.sampleRate });
+                    }
                     this.contextSampleRate = this.audioContext.sampleRate;
                     this.source = this.audioContext.createMediaStreamSource(this.stream);
 
@@ -1665,7 +1676,7 @@
         constructor(config) {
             this.config = config;
             this.container = null;
-            this.isMinimized = false;
+            this.isMinimized = config.startMinimized || false;
             this.isConnected = false;
             this.isListening = false;
             this.isTalking = false;
@@ -1834,9 +1845,7 @@
 
         createMinimizedUI() {
             this.container.innerHTML = `
-          <div class="voice-assistant-minimized ${this.isConnected ? 'active' : ''}" id="minimized-widget" title="AI Assistant">
-            ${this.isListening ? '🎤' : '🤖'}
-          </div>
+          <div class="voice-assistant-minimized ${this.isConnected ? 'active' : ''}" id="minimized-widget" title="AI Assistant">AI</div>
         `;
             const minimizedWidget = this.container.querySelector('#minimized-widget');
             minimizedWidget.addEventListener('click', () => {
@@ -1857,11 +1866,6 @@
             primaryAction?.addEventListener('click', () => {
                 // Allow host page to prepare AudioContext before we pre-warm it
                 this.onPrepareAudioContext?.();
-
-                // Pre-warm AudioContext on iOS if available
-                if (typeof window.prewarmAudioContextForIOS === 'function') {
-                    window.prewarmAudioContextForIOS();
-                }
 
                 if (!this.isConnected) {
                     this.startSession();
@@ -2122,79 +2126,79 @@
         }
     }
 
-    // Add this to your VoiceAssistant bundle right after the VoiceAssistantUI class definition
-    // This creates AudioContext IMMEDIATELY on button click, preserving the user gesture
+    // // Add this to your VoiceAssistant bundle right after the VoiceAssistantUI class definition
+    // // This creates AudioContext IMMEDIATELY on button click, preserving the user gesture
 
-    // iOS Safari Immediate AudioContext Creation
-    (function () {
-        'use strict';
+    // // iOS Safari Immediate AudioContext Creation
+    // (function () {
+    //     'use strict';
 
-        const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) &&
-            /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    //     const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+    //         /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-        if (!isIOSSafari) return;
+    //     if (!isIOSSafari) return;
 
-        console.log('🍎 iOS Safari: Setting up immediate AudioContext creation');
+    //     console.log('🍎 iOS Safari: Setting up immediate AudioContext creation');
 
-        // Store pre-created AudioContext globally
-        let iOSAudioContext = null;
+    //     // Store pre-created AudioContext globally
+    //     let iOSAudioContext = null;
 
-        // Function to create AudioContext immediately from user gesture
-        function createImmediateAudioContext() {
-            if (iOSAudioContext) return iOSAudioContext;
+    //     // Function to create AudioContext immediately from user gesture
+    //     function createImmediateAudioContext() {
+    //         if (iOSAudioContext) return iOSAudioContext;
 
-            console.log('🍎 iOS Safari: Creating AudioContext IMMEDIATELY from button click');
+    //         console.log('🍎 iOS Safari: Creating AudioContext IMMEDIATELY from button click');
 
-            try {
-                // Create AudioContext right now while we have user gesture
-                iOSAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    //         try {
+    //             // Create AudioContext right now while we have user gesture
+    //             iOSAudioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-                // The "createGain" trick from research - ensures clock starts
-                iOSAudioContext.createGain();
+    //             // The "createGain" trick from research - ensures clock starts
+    //             iOSAudioContext.createGain();
 
-                // Resume if suspended
-                if (iOSAudioContext.state === 'suspended') {
-                    iOSAudioContext.resume().then(() => {
-                        console.log('✅ iOS Safari: AudioContext resumed successfully');
-                    }).catch(err => {
-                        console.error('❌ iOS Safari: AudioContext resume failed:', err);
-                    });
-                }
+    //             // Resume if suspended
+    //             if (iOSAudioContext.state === 'suspended') {
+    //                 iOSAudioContext.resume().then(() => {
+    //                     console.log('✅ iOS Safari: AudioContext resumed successfully');
+    //                 }).catch(err => {
+    //                     console.error('❌ iOS Safari: AudioContext resume failed:', err);
+    //                 });
+    //             }
 
-                console.log('✅ iOS Safari: AudioContext created immediately, state:', iOSAudioContext.state);
-                return iOSAudioContext;
+    //             console.log('✅ iOS Safari: AudioContext created immediately, state:', iOSAudioContext.state);
+    //             return iOSAudioContext;
 
-            } catch (error) {
-                console.error('❌ iOS Safari: Immediate AudioContext creation failed:', error);
-                return null;
-            }
-        }
+    //         } catch (error) {
+    //             console.error('❌ iOS Safari: Immediate AudioContext creation failed:', error);
+    //             return null;
+    //         }
+    //     }
 
-        // Override Utils.audioContext to use pre-created context
-        document.addEventListener('DOMContentLoaded', () => {
-            if (typeof Utils !== 'undefined') {
-                const originalAudioContext = Utils.audioContext;
+    //     // Override Utils.audioContext to use pre-created context
+    //     document.addEventListener('DOMContentLoaded', () => {
+    //         if (typeof Utils !== 'undefined') {
+    //             const originalAudioContext = Utils.audioContext;
 
-                Utils.audioContext = async function (options = {}) {
-                    if (iOSAudioContext) {
-                        console.log('🍎 iOS Safari: Using pre-created AudioContext from Utils.audioContext');
-                        return iOSAudioContext;
-                    }
+    //             Utils.audioContext = async function (options = {}) {
+    //                 if (iOSAudioContext) {
+    //                     console.log('🍎 iOS Safari: Using pre-created AudioContext from Utils.audioContext');
+    //                     return iOSAudioContext;
+    //                 }
 
-                    // Fallback to original
-                    console.log('🍎 iOS Safari: No pre-created AudioContext, using original Utils.audioContext');
-                    return originalAudioContext(options);
-                };
+    //                 // Fallback to original
+    //                 console.log('🍎 iOS Safari: No pre-created AudioContext, using original Utils.audioContext');
+    //                 return originalAudioContext(options);
+    //             };
 
-                console.log('✅ iOS Safari: Utils.audioContext overridden to use pre-created context');
-            }
-        });
+    //             console.log('✅ iOS Safari: Utils.audioContext overridden to use pre-created context');
+    //         }
+    //     });
 
-        // Expose the pre-warm function so the UI can trigger it
-        window.prewarmAudioContextForIOS = createImmediateAudioContext;
+    //     // Expose the pre-warm function so the UI can trigger it
+    //     window.prewarmAudioContextForIOS = createImmediateAudioContext;
 
-        console.log('✅ iOS Safari: Immediate AudioContext creation system ready');
-    })();
+    //     console.log('✅ iOS Safari: Immediate AudioContext creation system ready');
+    // })();
 
     // =============================================================================
     // MAIN VOICE ASSISTANT CLASS - ENHANCED WITH VIDEO
@@ -2211,10 +2215,11 @@
             this.pageAccessor = null;
             this.ui = null;
             this.config = {
-                backendUrl: 'ws://localhost:8080',
+                backendUrl: 'wss://aiagent.babaai.live',
                 model: 'models/gemini-2.0-flash-exp',
                 theme: 'theme-dark',
                 position: 'bottom-right',
+                startMinimized: false,
                 voiceName: 'Aoede',
                 apiKey: null,
                 silenceTimeout: 1000,
@@ -2242,7 +2247,8 @@
                     ...this.config.features,
                     ...userConfig.features,
                     pageAccess: userConfig.features?.pageAccess !== false // Default to true
-                }
+                },
+                startMinimized: userConfig.startMinimized ?? this.config.startMinimized
             };
 
             // Initialize WebSocket client
@@ -2292,6 +2298,9 @@
 
             // Initialize UI
             this.ui = new VoiceAssistantUI(this.config);
+            this.ui.onPrepareAudioContext = () => {
+                this.createDeferredAudioContext();
+            };
 
             // Setup event handlers
             this.setupEventHandlers();
@@ -2314,10 +2323,15 @@
             console.log('🍎 iOS Safari: Creating AudioContext from user gesture');
 
             try {
-                const audioContext = await Utils.audioContext({ id: 'voice-assistant-audio' });
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                const audioContext = new AudioContextClass({ id: 'voice-assistant-audio' });
 
                 if (audioContext.state === 'suspended') {
-                    await audioContext.resume();
+                    try {
+                        audioContext.resume();
+                    } catch (err) {
+                        console.error('Failed to resume AudioContext:', err);
+                    }
                 }
 
                 this.audioStreamer = new AudioStreamer(audioContext);
@@ -2492,10 +2506,11 @@
         async startSession() {
             if (this.connected || !this.client) return;
 
-            // iOS Safari: Create deferred AudioContext from user gesture
-            await this.createDeferredAudioContext();
 
             this.sessionStartTime = Date.now();
+
+            // Start recording immediately to capture initial audio
+            await this.startAudioRecording();
 
             // Start page monitoring if enabled
             if (this.pageAccessor) {
@@ -2546,9 +2561,7 @@
                 const connected = await this.client.connect(this.config.model, config);
                 if (connected) {
                     // Auto-start microphone after connection
-                    setTimeout(() => {
-                        this.startAudioRecording();
-                    }, 500);
+                    await this.startAudioRecording();
                 } else {
                     console.error('Failed to connect via client');
                 }
@@ -2711,7 +2724,8 @@
             await this.createDeferredAudioContext();
 
             try {
-                await this.audioRecorder.start();
+                const ctx = this.audioStreamer?.context;
+                await this.audioRecorder.start(ctx);
                 this.muted = false;
                 this.ui?.updateListeningStatus(true);
             } catch (error) {
@@ -3038,7 +3052,7 @@
 
         elements.forEach(element => {
             const config = {
-                backendUrl: element.dataset.backendUrl || 'ws://localhost:8080',
+                backendUrl: element.dataset.backendUrl || 'wss://aiagent.babaai.live',
                 theme: element.dataset.theme || 'theme-dark',
                 position: element.dataset.position || 'bottom-right',
                 voiceName: element.dataset.voice || 'Aoede',
@@ -3123,6 +3137,10 @@
     function __vaBootstrap() {
         if (document.querySelector('[data-voice-assistant]')) {
             window.VoiceAssistant.autoInit();
+        } else {
+            const currentScript = document.currentScript;
+            const backendUrl = currentScript?.dataset.backendUrl || 'wss://aiagent.babaai.live';
+            window.VoiceAssistant.init({ backendUrl, startMinimized: true });
         }
     }
 
