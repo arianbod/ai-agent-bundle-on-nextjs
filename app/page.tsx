@@ -4,10 +4,6 @@
 import { useEffect, useRef } from 'react';
 import Head from 'next/head';
 
-export const metadata = {
-  title: 'Voice Assistant – BabaAI',
-};
-
 export default function VoiceDemoPage() {
   const backendUrlRef = useRef<HTMLInputElement>(null);
 
