@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Agent Bundle on Next.js
+
+A Next.js starter that drops a multimodal voice assistant — powered by Gemini Live via WebSocket — into any web app with a single script tag. Useful when you want voice, video, screen-share, and file analysis working from day one without wiring up a provider SDK yourself.
+
+## What's Included
+
+- **Next.js 15 + React 19 + TypeScript + Tailwind CSS 4** — the stack, nothing unusual
+- **`voice-assistant-bundle.js`** — a self-contained, pre-built bundle (in `public/src/`) that exposes a `VoiceAssistant` global. Call `VoiceAssistant.init({ backendUrl: 'wss://...' })` and you're live
+- **Gemini 2.0 Flash** under the hood, routed through a WebSocket backend you own or point at `wss://aiagent.babaai.live` for a quick demo
+- **Multimodal from the start** — voice input/output, video, screen sharing, file upload, and page-context reading are all enabled by default
+- **iOS Safari AudioContext fix** — baked into `PlainVoiceDemo.tsx` so the mic works on mobile without extra patches
+- **Global layout integration** — the bundle CSS and JS are loaded in `app/layout.tsx`, so the assistant follows the user across all pages
+- **`/about` route** — a second page showing that the assistant is page-aware and can answer questions about whatever the user is currently viewing
 
 ## Getting Started
 
-First, run the development server:
+Clone and run:
 
 ```bash
+git clone https://github.com/arianbod/ai-agent-bundle-on-nextjs.git my-app
+cd my-app
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). You'll see a text input pre-filled with `wss://aiagent.babaai.live` — hit **Start Assistant** to try it against the demo backend.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+When you're ready to connect your own backend, replace that URL with your WebSocket server's address. The bundle's `init` config accepts `backendUrl`, `voiceName`, `model`, feature flags, and `websiteContext` for custom instructions.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Key Files
 
-## Learn More
+| File | What it does |
+|---|---|
+| `public/src/voice-assistant-bundle.js` | The prebuilt assistant bundle — replace when you ship a new version |
+| `public/src/voice-assistant-bundle.css` | Matching styles for the assistant widget |
+| `app/PlainVoiceDemo.tsx` | Client component wiring up the start/stop flow with mic permission handling |
+| `app/layout.tsx` | Loads the bundle globally so it persists across routes |
+| `next.config.ts` | Sets a one-year cache header on the bundle assets |
 
-To learn more about Next.js, take a look at the following resources:
+## Backend
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This starter is frontend-only. It expects a WebSocket server that speaks the Gemini Live protocol. You can run `wss://aiagent.babaai.live` as a demo endpoint, or build your own server that proxies to the Gemini Live API with your `GOOGLE_API_KEY`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deploy
 
-## Deploy on Vercel
+```bash
+npm run build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deploys cleanly on Vercel, Cloudflare Pages, or any Node host. No server-side env vars required by the frontend itself.
